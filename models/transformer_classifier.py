@@ -4,15 +4,15 @@ from transformers import (
     TrainingArguments,
     Trainer
 )
-from datasets import Dataset
+from data.custom_dataset import CustomDataset
 from sklearn.metrics import accuracy_score, f1_score
 import numpy as np
 import os
 
 class HateSpeechDetector:
-    def __init__(self, model_name='roberta-base', num_labels=2):
+    def __init__(self, model_name='roberta-base', num_labels=3):
         self.model_name = model_name
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
         self.model = AutoModelForSequenceClassification.from_pretrained(
             model_name,
             num_labels=num_labels
@@ -36,8 +36,11 @@ class HateSpeechDetector:
             'f1': f1_score(labels, predictions, average='weighted')
         }
     
-    def train(self, train_dataset, val_dataset=None,
+    def train(self, train_data, val_data=None,
               batch_size=16, num_epochs=3, learning_rate=2e-5, output_dir="./transfomer_model/"):
+        
+        train_dataset = CustomDataset(train_data['text'], train_data['labels'], self.tokenizer)
+        val_dataset =  CustomDataset(val_data['text'], val_data['labels'], self.tokenizer)  
         
         output_dir = f"{output_dir}/{self.model_name}"
         
@@ -49,10 +52,11 @@ class HateSpeechDetector:
             per_device_eval_batch_size=batch_size,
             learning_rate=learning_rate,
             weight_decay=0.01,
-            evaluation_strategy="epoch" if val_dataset else "no",
+            eval_strategy="epoch" if val_dataset else "no",
             save_strategy="epoch",
             load_best_model_at_end=True if val_dataset else False,
-            metric_for_best_model="f1" if val_dataset else None
+            metric_for_best_model="f1" if val_dataset else None,
+            save_total_limit=2,
         )
         
         # Initialize trainer
@@ -94,7 +98,7 @@ class HateSpeechDetector:
             f.write(self.model_name)
     
     @classmethod
-    def load_model(cls, model_dir):
+    def load_model(cls, model_dir, tokenizer=None):
         """Load a saved model from a directory"""
         # Create a new instance
         instance = cls.__new__(cls)
@@ -107,7 +111,7 @@ class HateSpeechDetector:
             instance.model_name = "unknown"
         
         # Load tokenizer and model
-        instance.tokenizer = AutoTokenizer.from_pretrained(model_dir)
+        instance.tokenizer = AutoTokenizer.from_pretrained( tokenizer if tokenizer else model_dir)
         instance.model = AutoModelForSequenceClassification.from_pretrained(model_dir)
         
         return instance
