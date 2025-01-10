@@ -26,7 +26,7 @@ class CustomDataset(Dataset):
         
         encoding = self.tokenizer(
             text,
-            add_special_tokens=True,
+            # add_special_tokens=True,
             max_length=self.max_length,
             padding='max_length',
             truncation=True,
