@@ -5,6 +5,8 @@ from sklearn.metrics import f1_score, confusion_matrix, accuracy_score, recall_s
 
 
 def evaluate(model, texts, true_values):
+    
+    print(texts)
     y_pred = model.predict(texts)
     y_true = true_values
     

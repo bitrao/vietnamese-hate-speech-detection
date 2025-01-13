@@ -7,6 +7,7 @@ from pyvi import ViTokenizer
 
 import re
 import numpy as np
+import pandas as pd
 
 STOPWORDS = 'data/vietnamese-stopwords.txt'
 with open(STOPWORDS, "r") as ins:
@@ -56,16 +57,31 @@ def preprocess(text, tokenized=True, lowercased=True):
         for sentence in sentences:
             pre_text += " ".join(sentence)
         text = pre_text
-    print(text)
     return text
 
 def pre_process_features(X, y, tokenized=True, lowercased=True):
-    print(X)
     X = [preprocess(str(p), tokenized=tokenized, lowercased=lowercased) for p in list(X)]
-    print(X)
     for idx, ele in enumerate(X):
         if not ele:
             np.delete(X, idx)
             np.delete(y, idx)
     return X, y
 
+
+
+def reduce_class_size(df, label_column, target_class, target_size):
+
+    # Separate the target class and the rest of the dataset
+    target_class_df = df[df[label_column] == target_class]
+    other_classes_df = df[df[label_column] != target_class]
+
+    # Reduce the size of the target class
+    reduced_target_class_df = target_class_df.sample(n=target_size, random_state=42)
+
+    # Combine the reduced target class with the other classes
+    updated_df = pd.concat([reduced_target_class_df, other_classes_df])
+
+    # Shuffle the dataset
+    updated_df = updated_df.sample(frac=1, random_state=42).reset_index(drop=True)
+    
+    return updated_df
