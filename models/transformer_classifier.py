@@ -8,6 +8,8 @@ from data.custom_dataset import CustomDataset
 from sklearn.metrics import accuracy_score, f1_score
 import numpy as np
 import os
+import onnxruntime as ort
+
 
 class HateSpeechDetector:
     def __init__(self, model_name='roberta-base', num_labels=3):
@@ -76,13 +78,22 @@ class HateSpeechDetector:
     
     def predict(self, texts):
         # Tokenize inputs
-        inputs = self.tokenize_data(texts)
+        inputs = self.tokenize_data(texts)    
         
-        # Get predictions
-        outputs = self.model(**inputs)
-        predictions = np.argmax(outputs.logits.detach().numpy(), axis=1)
-        
-        return predictions
+        if self.onnx:
+            onnx_inputs = {
+                "input_ids": inputs["input_ids"].numpy(),
+                "attention_mask": inputs["attention_mask"].numpy(),
+            }
+            outputs = self.__ort_session.run(None, onnx_inputs)
+            predictions = np.argmax(outputs[0], axis=1)
+            
+        else: 
+            outputs = self.model(**inputs)
+            # Get predictions
+            predictions = np.argmax(outputs.logits.detach().numpy(), axis=1)
+
+        return predictions[0] if len(predictions) == 1 else predictions
     
     def save_model(self, output_dir):
         """Save the model and tokenizer to a directory"""
@@ -103,15 +114,26 @@ class HateSpeechDetector:
         # Create a new instance
         instance = cls.__new__(cls)
         
-        # Load the model name if available
-        try:
-            with open(os.path.join(model_dir, "model_name.txt"), "r") as f:
-                instance.model_name = f.read().strip()
-        except FileNotFoundError:
-            instance.model_name = "unknown"
-        
-        # Load tokenizer and model
-        instance.tokenizer = AutoTokenizer.from_pretrained( tokenizer if tokenizer else model_dir)
-        instance.model = AutoModelForSequenceClassification.from_pretrained(model_dir)
+        instance.tokenizer = AutoTokenizer.from_pretrained(tokenizer if tokenizer else model_dir)
+
+        if model_dir.endswith(".onnx"):
+            sess_options = ort.SessionOptions()
+            sess_options.intra_op_num_threads = 2
+            instance.onnx = True
+
+            instance.__ort_session = ort.InferenceSession(model_dir, sess_options)
+
+        else:
+            # Load the model name if available
+            try:
+                with open(os.path.join(model_dir, "model_name.txt"), "r") as f:
+                    instance.model_name = f.read().strip()
+            except FileNotFoundError:
+                instance.model_name = "unknown"
+                
+            instance.onnx = False
+            
+            # Load model
+            instance.model = AutoModelForSequenceClassification.from_pretrained(model_dir)
         
         return instance
