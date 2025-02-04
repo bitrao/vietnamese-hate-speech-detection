@@ -85,3 +85,24 @@ def reduce_class_size(df, label_column, target_class, target_size):
     updated_df = updated_df.sample(frac=1, random_state=42).reset_index(drop=True)
     
     return updated_df
+
+
+def annotate_overall_hate(df):
+    """
+    For VITHSD datasets. Extract the overall hate stance
+
+    Args:
+        df: dataframe with emotion stances toward different target (VITHSD)
+    """
+    
+    numerics_col = df.select_dtypes(include=["number"])
+     
+    res_df = df.drop(columns=numerics_col.columns)
+    
+    # Get the overal stance upon the sentence
+    # if there 2 it any target => offensive overall
+    
+    res_df['label_id'] = numerics_col.max(axis=1) - 1
+    
+    res_df.loc[res_df['label_id'] == -1, 'label_id'] = 0    
+    return res_df

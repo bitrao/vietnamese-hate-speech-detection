@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import f1_score, confusion_matrix, accuracy_score, recall_score
 
 
-def evaluate(model, texts, true_values):
+def  evaluate(model, texts, true_values, text_labels=["clean","offensive","hate"]):
     
     print(texts)
     y_pred = model.predict(texts)
@@ -12,8 +12,8 @@ def evaluate(model, texts, true_values):
     
     #confusion matrix
     cfm = confusion_matrix(y_true, y_pred)
-    df_cm1 = pd.DataFrame(cfm, index = ["clean","offensive","hate"],
-                  columns = ["clean","offensive","hate"])
+    df_cm1 = pd.DataFrame(cfm, index = text_labels,
+                  columns = text_labels)
     plt.clf()
     sns.heatmap(df_cm1, annot=True, cmap="Greys",fmt='g', cbar=True, annot_kws={"size": 30})
     
