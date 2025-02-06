@@ -5,6 +5,7 @@ __pycache__
 
 data/*
 !data/*.py
+!data/*.txt
 
 models/*
 !models/*.py 
